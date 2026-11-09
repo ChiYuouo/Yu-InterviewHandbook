@@ -1,0 +1,93 @@
+:root {
+    --sidebar-target-width: 332px;
+}
+
+.sidebar {
+    border-inline-end: 1px solid color-mix(in srgb, var(--sidebar-fg) 12%, transparent);
+}
+
+.sidebar .sidebar-scrollbox {
+    padding: 14px 8px 32px;
+}
+
+.chapter,
+.section {
+    line-height: 1.45;
+}
+
+.chapter li.chapter-item,
+.chapter li.header-item {
+    margin-block: 1px;
+    line-height: 1.45;
+}
+
+.chapter li.part-title {
+    margin: 22px 12px 8px;
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--sidebar-fg) 58%, var(--sidebar-active));
+}
+
+.chapter-link-wrapper {
+    align-items: center;
+    margin-inline: 4px;
+    border-radius: 9px;
+    transition: background-color 0.16s ease;
+}
+
+.chapter-link-wrapper:hover,
+.chapter-link-wrapper:has(> a.active) {
+    background: color-mix(in srgb, var(--sidebar-fg) 8%, transparent);
+}
+
+.chapter-link-wrapper:has(> a.active) {
+    background: color-mix(in srgb, var(--sidebar-active) 16%, transparent);
+}
+
+.chapter li a:not(.chapter-fold-toggle),
+.chapter-link-wrapper > span {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 9px;
+}
+
+.chapter li a {
+    transition: color 0.16s ease;
+}
+
+.chapter-fold-toggle {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-inline: 2px 4px;
+    padding: 0;
+    border-radius: 8px;
+    opacity: 0.45;
+    transition: opacity 0.16s ease, background-color 0.16s ease;
+}
+
+.chapter-fold-toggle:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--sidebar-fg) 10%, transparent);
+}
+
+.chapter-fold-toggle div {
+    transition: transform 0.18s ease;
+    font-size: 0.8em;
+}
+
+.section {
+    margin-inline-start: 14px;
+    padding-inline-start: 8px;
+    border-inline-start: 1px solid color-mix(in srgb, var(--sidebar-fg) 16%, transparent);
+}
+
+.chapter .spacer {
+    width: auto;
+    height: 1px;
+    margin: 12px 14px;
+    background: color-mix(in srgb, var(--sidebar-fg) 14%, transparent);
+}
