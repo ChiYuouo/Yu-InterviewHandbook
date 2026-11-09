@@ -124,4 +124,3 @@
 | 必刷题   | [136. 只出现一次的数字](https://leetcode.cn/problems/single-number/)、[231. 2 的幂](https://leetcode.cn/problems/power-of-two/) |
 | 进阶题   | [191. 位 1 的个数](https://leetcode.cn/problems/number-of-1-bits/)、[78. 子集](https://leetcode.cn/problems/subsets/)           |
 | 复盘重点 | 异或性质、`n & (n - 1)` 的含义、负数位表示                                                                                      |
-

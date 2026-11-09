@@ -2,7 +2,17 @@ import fs from "fs";
 import path from "path";
 
 const root = path.resolve(import.meta.dirname, "..");
-const src = path.join(root, "src");
+const srcFlag = process.argv.indexOf("--src");
+if (srcFlag >= 0 && !process.argv[srcFlag + 1]) {
+  console.error("Missing value for --src");
+  process.exit(1);
+}
+const src =
+  srcFlag >= 0 ? path.resolve(process.argv[srcFlag + 1]) : path.join(root, "src");
+if (!fs.existsSync(src)) {
+  console.error("Missing source directory", src);
+  process.exit(1);
+}
 
 const dropDirs = [
   "about-the-author",
@@ -218,20 +228,164 @@ function pruneSummary(text) {
   return `${out.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
 }
 
+const summaryInsertions = [
+  [
+    "        - [⭐Java 基础常见面试题（下）](java/basis/java-basic-questions-03.md)\n        - [重要知识点]()",
+    "        - [⭐Java 基础常见面试题（下）](java/basis/java-basic-questions-03.md)\n        - [重要知识点]()\n            - [Java 关键字总结](java/basis/java-keyword-summary.md)",
+  ],
+  [
+    "            - [AQS 详解](java/concurrent/aqs.md)",
+    "            - [AQS 详解](java/concurrent/aqs.md)\n            - [从 ReentrantLock 的实现看 AQS 的原理及应用](java/concurrent/reentrantlock.md)",
+  ],
+  [
+    "    - [JVM]()\n        - [⭐JVM 常见面试题总结](java/jvm/jvm-interview-questions.md)",
+    "    - [JVM]()\n        - [大白话带你认识 JVM](java/jvm/jvm-intro.md)\n        - [⭐JVM 常见面试题总结](java/jvm/jvm-interview-questions.md)",
+  ],
+  [
+    "        - [Java 25 新特性概览](java/new-features/java25.md)",
+    "        - [Java 25 新特性概览](java/new-features/java25.md)\n        - [Java 26 新特性概览](java/new-features/java26.md)",
+  ],
+  [
+    "        - [⭐MySQL 常见面试题总结](database/mysql/mysql-questions-01.md)",
+    "        - [⭐MySQL 常见面试题总结](database/mysql/mysql-questions-01.md)\n        - [一千行 MySQL 学习笔记](database/mysql/a-thousand-lines-of-mysql-study-notes.md)",
+  ],
+  [
+    "        - [从输入 URL 到页面展示到底发生了什么？](cs-basics/network/the-whole-process-of-accessing-web-pages.md)",
+    "        - [从输入 URL 到页面展示到底发生了什么？](cs-basics/network/the-whole-process-of-accessing-web-pages.md)\n        - [《计算机网络》（谢希仁）内容总结](cs-basics/network/computer-network-xiexiren-summary.md)",
+  ],
+  [
+    "        - [单元测试指南](system-design/basis/unit-test.md)",
+    "        - [单元测试指南](system-design/basis/unit-test.md)\n        - [J2EE 基础知识](system-design/J2EE基础知识.md)",
+  ],
+];
+
+const linkRewrites = new Map([
+  [
+    "distributed-system/rpc/dubbo.md",
+    [
+      [
+        "Dubbo 涉及注册中心、负载均衡、集群容错，这部分也可以和 [ZooKeeper 专题](../distributed-process-coordination/zookeeper/README.md) 放在一起看。",
+        "Dubbo 涉及注册中心、负载均衡、集群容错，这部分也可以和 [ZooKeeper 入门指南](../distributed-process-coordination/zookeeper/zookeeper-intro.md) 放在一起看。",
+      ],
+    ],
+  ],
+  [
+    "distributed-system/microservices-interview-questions.md",
+    [
+      [
+        "相关内容：\n\n- [高可用系统知识体系](../high-availability/README.md)\n- [认证授权与数据安全专题](../system-design/security/README.md)\n- [API 网关基础知识总结](./api-gateway.md)",
+        "相关内容：\n\n- [API 网关基础知识总结](./api-gateway.md)",
+      ],
+    ],
+  ],
+  [
+    "distributed-system/distributed-configuration-center.md",
+    [
+      [
+        "配置中心还经常和 [RPC](./rpc/README.md) 以及 [API 网关](./api-gateway.md) 一起出现",
+        "配置中心还经常和 [RPC 基础知识总结](./rpc/rpc-intro.md) 以及 [API 网关](./api-gateway.md) 一起出现",
+      ],
+    ],
+  ],
+  [
+    "distributed-system/api-gateway.md",
+    [
+      [
+        "[RPC](./rpc/README.md) 主要讲服务之间怎么互相调用",
+        "[RPC 基础知识总结](./rpc/rpc-intro.md) 主要讲服务之间怎么互相调用",
+      ],
+    ],
+  ],
+  [
+    "ai/interview-questions/ai-interview-guide.md",
+    [
+      [
+        `- Token、上下文窗口和采样参数可以回到 [大模型基础专题](../llm-basis/README.md)；
+- Agent Loop、Memory、MCP 和 Skills 可以回到 [AI Agent 专题](../agent/README.md)；
+- Chunk、向量检索、Rerank 和知识库更新可以回到 [RAG 专题](../rag/README.md)；
+- 模型网关、实时语音和生产架构可以回到 [AI 系统设计专题](../system-design/README.md)。`,
+        `- Token、上下文窗口和采样参数可以回到 [万字拆解 LLM 运行机制](../llm-basis/llm-operation-mechanism.md)；
+- Agent Loop、Memory、MCP 和 Skills 可以回到 [AI Agent 核心概念详解](../agent/agent-basis.md)；
+- Chunk、向量检索、Rerank 和知识库更新可以回到 [RAG 基础概念详解](../rag/rag-basis.md)；
+- 模型网关、实时语音和生产架构可以回到 [AI 应用系统设计](../system-design/ai-application-architecture.md)。`,
+      ],
+    ],
+  ],
+]);
+
+function insertOnce(summary, from, to) {
+  if (summary.includes(to)) return summary;
+  if (!summary.includes(from)) {
+    throw new Error(`SUMMARY anchor missing:\n${from}`);
+  }
+  return summary.replace(from, to);
+}
+
+function stripIndexPages(summary) {
+  return (
+    summary
+      .split("\n")
+      .filter((line) => {
+        const match = line.match(/\]\(([^)]*)\)/);
+        if (!match) return true;
+        const href = match[1].split("#")[0].split("?")[0];
+        return !/(^|\/)README\.md$/i.test(href) && href !== "home.md";
+      })
+      .join("\n")
+      .replace(/\n# 专题目录[\s\S]*$/, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim() + "\n"
+  );
+}
+
 const summaryPath = path.join(src, "SUMMARY.md");
-fs.writeFileSync(summaryPath, pruneSummary(fs.readFileSync(summaryPath, "utf8")));
+let summary = pruneSummary(fs.readFileSync(summaryPath, "utf8").replace(/\r\n/g, "\n"));
+for (const [from, to] of summaryInsertions) summary = insertOnce(summary, from, to);
+summary = stripIndexPages(summary);
+fs.writeFileSync(summaryPath, summary);
 
-const readme = `# JavaGuide
-
-这份资料只保留面试八股文：Java、数据库、开发工具、系统设计、分布式、高性能、高可用、计算机基础，以及 AI 应用开发面试题。
-
-## 从这里开始
-
-- [Java 面试指南](./home.md)
-- [计算机基础](./cs-basics/README.md)
-- [AI 应用开发](./ai/README.md)
-`;
-fs.writeFileSync(path.join(src, "README.md"), readme);
+let removedIndexes = 0;
+let retargeted = 0;
+for (const abs of walk(src)) {
+  if (!abs.endsWith(".md")) continue;
+  const base = path.basename(abs);
+  if (base === "README.md" || base === "home.md") {
+    fs.unlinkSync(abs);
+    removedIndexes += 1;
+    continue;
+  }
+  if (base === "SUMMARY.md") continue;
+  let text = fs.readFileSync(abs, "utf8");
+  const original = text;
+  for (const [from, to] of linkRewrites.get(rel(abs)) ?? []) {
+    if (text.includes(from)) text = text.replace(from, to);
+  }
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (full, label, url) => {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//")) return full;
+    const href = url.split("#")[0].split("?")[0];
+    if (/(^|\/)README\.md$/i.test(href) || /(^|\/)home\.md$/i.test(href)) return label;
+    return full;
+  });
+  text = text
+    .replace(
+      /\n## 复习路线入口\n\n这篇文章只保留经典题型和题单推荐，7 天速刷和 30 天系统路线统一维护在算法面试复习总览。后续如果调整复习节奏，只需要更新总览页，避免多个题单里的路线表互相漂移。\n?/,
+      "\n",
+    )
+    .replace(
+      /\n## 复习路线入口\n\n这篇文章只保留数据结构相关题单。7 天复习路线和 30 天复习路线统一维护在数据结构复习总览，避免题单文章和总览页重复维护同一套计划。\n?/,
+      "\n",
+    )
+    .replace(
+      /JavaGuide 相关阅读：\n\n- AI 应用开发知识体系：大模型、Agent、RAG、MCP、Prompt 工程与系统设计\n- AI 系统设计专题：生产级架构、模型网关、评测治理与语音 Agent\n- 大模型基础专题：运行机制、API 调用、结构化输出与评测\n- RAG 专题：文档处理、向量数据库、GraphRAG、检索优化与知识库更新\n- AI Agent 专题：Agent Loop、Memory、Prompt、Context、MCP 与 Skills\n\n/,
+      "",
+    );
+  if (text !== original) {
+    fs.writeFileSync(abs, text);
+    retargeted += 1;
+  }
+}
 
 const pages = walk(src).filter((file) => file.endsWith(".md") && path.basename(file) !== "SUMMARY.md");
-console.log(JSON.stringify({ pages: pages.length, promoStripped: stripped }, null, 2));
+console.log(
+  JSON.stringify({ pages: pages.length, promoStripped: stripped, removedIndexes, retargeted }, null, 2),
+);

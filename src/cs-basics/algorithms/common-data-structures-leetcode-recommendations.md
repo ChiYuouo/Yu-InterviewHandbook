@@ -87,4 +87,3 @@
 | Trie + DFS | [212. 单词搜索 II](https://leetcode.cn/problems/word-search-ii/)           | [648. 单词替换](https://leetcode.cn/problems/replace-words/)                                             | 中高频题     | 前缀剪枝               |
 | 并查集     | [547. 省份数量](https://leetcode.cn/problems/number-of-provinces/)         | [1319. 连通网络的操作次数](https://leetcode.cn/problems/number-of-operations-to-make-network-connected/) | 连通性模板   | 路径压缩               |
 | 并查集判环 | [684. 冗余连接](https://leetcode.cn/problems/redundant-connection/)        | [990. 等式方程的可满足性](https://leetcode.cn/problems/satisfiability-of-equality-equations/)            | 图题常见变体 | 先合并等式，再检查冲突 |
-

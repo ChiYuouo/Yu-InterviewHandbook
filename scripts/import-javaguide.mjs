@@ -1,10 +1,14 @@
+import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const root = path.resolve(import.meta.dirname, "..");
 const extractRoot = path.join(root, "_extract", "JavaGuide-main");
 const docs = path.join(extractRoot, "docs");
-const src = path.join(root, "src");
+const liveSrc = path.join(root, "src");
+const staging = path.join(root, ".src-staging");
+const previousSrc = path.join(root, ".src-previous");
 const sidebarDir = path.join(docs, ".vuepress", "sidebar");
 const snippetsDir = path.join(docs, "snippets");
 
@@ -68,14 +72,18 @@ function stripFrontmatter(text) {
 }
 
 function expandIncludes(content, depth = 0) {
-  if (depth > 8) return content;
+  if (depth > 8) {
+    if (/<!--\s*@include:\s*\S+\s*-->/.test(content)) {
+      throw new Error("@include expanded past 8 levels and was left in the output");
+    }
+    return content;
+  }
   return content.replace(/<!--\s*@include:\s*(\S+)\s*-->/g, (full, inc) => {
     const target = inc.startsWith("@")
       ? path.join(snippetsDir, inc.slice(1))
       : null;
     if (!target || !fs.existsSync(target)) {
-      missingIncludes.add(inc);
-      return full;
+      throw new Error(`Unresolved @include: ${inc}`);
     }
     const raw = fs.readFileSync(target, "utf8");
     const { body } = stripFrontmatter(raw);
@@ -83,7 +91,7 @@ function expandIncludes(content, depth = 0) {
   });
 }
 
-function convertContainers(md) {
+function convertContainers(md, fromFile = "") {
   const lines = md.split("\n");
   const out = [];
   let inFence = false;
@@ -152,8 +160,8 @@ function convertContainers(md) {
     else out.push(line);
   }
   if (container) {
-    out.push(`::: ${container.kind}${container.title ? " " + container.title : ""}`);
-    out.push(...container.lines);
+    const where = fromFile ? `${fromFile}: ` : "";
+    throw new Error(`${where}unclosed VuePress container ::: ${container.kind}`);
   }
   return out.join("\n");
 }
@@ -355,12 +363,13 @@ function rewritePlain(text, fromFile) {
       const url = dq ?? sq;
       const quote = dq !== undefined ? '"' : "'";
       if (!url) return full;
-      if (
-        attr === "src" &&
-        /^https?:/i.test(url) &&
-        !/javaguide\.cn/i.test(url)
-      ) {
-        return full;
+      if (attr === "src") {
+        const online = toOnlineImage(fromFile, url);
+        if (online !== url) {
+          onlineImageCount += 1;
+          return `${attr}=${quote}${online}${quote}`;
+        }
+        if (/^https?:/i.test(url) && !/javaguide\.cn/i.test(url)) return full;
       }
       const rewritten = rewriteUrl(url, fromFile);
       if (rewritten === url) return full;
@@ -548,15 +557,66 @@ function withReadme(readme, readmeTitle, nodes, prefix, used) {
 const mdFiles = new Set();
 const assetFiles = new Set();
 const titles = new Map();
-const missingIncludes = new Set();
 const missingImages = new Set();
 const unresolved = [];
 let onlineImageCount = 0;
 
-if (!fs.existsSync(docs)) {
-  console.error("Missing extracted docs at", docs);
-  process.exit(1);
+function isDirectRun() {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return path.resolve(entry) === fileURLToPath(import.meta.url);
 }
+
+function runCurate(dir) {
+  const script = path.join(root, "scripts", "keep-baguwen.mjs");
+  const result = spawnSync(process.execPath, [script, "--src", dir], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  if (result.status !== 0) {
+    throw new Error("keep-baguwen failed");
+  }
+}
+
+function replaceSrc() {
+  fs.rmSync(previousSrc, { recursive: true, force: true });
+  if (fs.existsSync(liveSrc)) fs.renameSync(liveSrc, previousSrc);
+  try {
+    fs.renameSync(staging, liveSrc);
+    fs.rmSync(previousSrc, { recursive: true, force: true });
+  } catch (error) {
+    if (!fs.existsSync(liveSrc) && fs.existsSync(previousSrc)) {
+      fs.renameSync(previousSrc, liveSrc);
+    }
+    throw error;
+  }
+}
+
+function build() {
+  if (!fs.existsSync(docs)) {
+    console.error("Missing extracted docs at", docs);
+    process.exit(1);
+  }
+
+  fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(staging, { recursive: true });
+  const src = staging;
+
+  try {
+    buildInto(src);
+    runCurate(src);
+    replaceSrc();
+    const licenseSrc = path.join(extractRoot, "LICENSE");
+    if (fs.existsSync(licenseSrc)) {
+      fs.copyFileSync(licenseSrc, path.join(root, "LICENSE"));
+    }
+  } catch (error) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function buildInto(src) {
 
 const skipPage = (rel) =>
   rel.endsWith(".snippet.md") ||
@@ -575,16 +635,13 @@ walkDir(docs, (abs) => {
   }
 });
 
-fs.rmSync(src, { recursive: true, force: true });
-fs.mkdirSync(src, { recursive: true });
-
 let rewrittenLinks = 0;
 for (const rel of mdFiles) {
   const abs = path.join(docs, rel);
   const raw = fs.readFileSync(abs, "utf8");
   const { body, title } = stripFrontmatter(raw);
   const included = expandIncludes(body);
-  const containers = convertContainers(included);
+  const containers = convertContainers(included, rel);
   const before = containers;
   const linked = onlineImages(rewriteLinks(containers, rel), rel);
   if (linked !== before) rewrittenLinks += 1;
@@ -736,26 +793,32 @@ for (const [title, items] of parts) summary += sectionBlock(title, items);
 if (orphanItems.length) summary += sectionBlock("未列入原目录的文章", orphanItems);
 fs.writeFileSync(path.join(src, "SUMMARY.md"), summary);
 
-const licenseSrc = path.join(extractRoot, "LICENSE");
-if (fs.existsSync(licenseSrc)) {
-  fs.copyFileSync(licenseSrc, path.join(root, "LICENSE"));
+  const linkedCount = (summary.match(/\]\([^)\n]+\)/g) || []).length;
+  console.log(
+    JSON.stringify(
+      {
+        pages: mdFiles.size,
+        assets: assetFiles.size,
+        summaryLinks: linkedCount,
+        filesWithRewrittenLinks: rewrittenLinks,
+        unresolvedSidebarLinks: [...new Set(unresolved)],
+        onlineImages: onlineImageCount,
+        missingImages: [...missingImages],
+        orphanPages: orphans.length,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
-const linkedCount = (summary.match(/\]\([^)\n]+\)/g) || []).length;
-console.log(
-  JSON.stringify(
-    {
-      pages: mdFiles.size,
-      assets: assetFiles.size,
-      summaryLinks: linkedCount,
-      filesWithRewrittenLinks: rewrittenLinks,
-      unresolvedSidebarLinks: [...new Set(unresolved)],
-      missingIncludes: [...missingIncludes],
-      onlineImages: onlineImageCount,
-      missingImages: [...missingImages],
-      orphanPages: orphans.length,
-    },
-    null,
-    2,
-  ),
-);
+export { convertContainers, expandIncludes, rewritePlain, toOnlineImage };
+
+if (isDirectRun()) {
+  try {
+    build();
+  } catch (error) {
+    console.error(error.message || error);
+    process.exit(1);
+  }
+}
