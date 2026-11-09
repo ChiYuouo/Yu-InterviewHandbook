@@ -24,16 +24,3 @@ mdbook serve --hostname 127.0.0.1 --port 3000
 
 源文件在 `src/`，章节顺序由 `src/SUMMARY.md` 决定。
 
-## 重新生成 src
-
-把上游仓库放到 `_extract/JavaGuide-main` 后执行：
-
-```bash
-node scripts/import-javaguide.mjs
-```
-
-导入先写到临时目录，再筛成现在这份八股文：去掉作者介绍、专栏和推广，删掉各节 README 与首页，并补上因此从目录里消失的文章。这一步成功之后才替换 `src/`。已经导入过、只想再筛一遍时：
-
-```bash
-node scripts/keep-baguwen.mjs
-```
