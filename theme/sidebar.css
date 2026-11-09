@@ -53,6 +53,10 @@
     border-radius: 9px;
 }
 
+.chapter-link-wrapper > span {
+    cursor: pointer;
+}
+
 .chapter li a {
     transition: color 0.16s ease;
 }
